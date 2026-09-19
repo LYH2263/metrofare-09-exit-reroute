@@ -17,3 +17,6 @@ button { background: var(--accent); border:0; padding:0.4rem 0.85rem; border-rad
 .hero-num { font-size:2.2rem; font-weight:700; color: var(--accent); }
 .muted { color: var(--muted); }
 input, select { background:#0a1528; border:1px solid var(--muted); color:var(--text); padding:0.35rem; border-radius:4px; }
+.err { color:#ff8a8a; }
+.detail-row td { background:#0f1a33; color:var(--muted); }
+.reroute-cell select { margin-right:0.4rem; }

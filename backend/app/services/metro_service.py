@@ -1,3 +1,5 @@
+import json
+
 from app.db import connect
 from app.engines.route_quote import quote_route
 from app.repositories import edges as edges_repo
@@ -44,8 +46,60 @@ class MetroService:
             run_id = runs_repo.insert(self._conn, "quote", {"start": start, "end": end}, result)
         return {"run_id": run_id, **result}
 
+    def reroute(self, run_id: int, new_end: str):
+        """Re-quote an existing reachable record with a new destination.
+
+        The original record is never modified; on success a new quote record
+        referencing the original via parent_id is inserted. Raises LookupError
+        if the record is missing, ValueError if the reroute is not allowed.
+        """
+        row = runs_repo.get(self._conn, run_id)
+        if row is None:
+            raise LookupError(f"记录 #{run_id} 不存在")
+        item = self._row_to_item(row)
+        if not item["reachable"]:
+            raise ValueError(f"记录 #{run_id} 不可达，不能改终点")
+        start = item["start"]
+        if new_end == start:
+            raise ValueError("新终点不能与原起点相同")
+        if stations_repo.get_by_code(self._conn, new_end) is None:
+            raise ValueError(f"未知终点编码 {new_end}")
+        edges = edges_repo.list_pairs(self._conn)
+        rules = rules_repo.as_calc_rules(self._conn)
+        result = quote_route(edges, start, new_end, rules)
+        if not result["reachable"]:
+            raise ValueError(f"新终点 {new_end} 按现行线网不可达")
+        new_id = runs_repo.insert(
+            self._conn,
+            "quote",
+            {"start": start, "end": new_end, "parent_id": run_id},
+            result,
+        )
+        return {"run_id": new_id, "parent_id": run_id, **result}
+
     def history(self, limit=50):
-        return runs_repo.list_recent(self._conn, limit)
+        return [self._row_to_item(r) for r in runs_repo.list_recent(self._conn, limit)]
+
+    def run(self, run_id: int):
+        row = runs_repo.get(self._conn, run_id)
+        return self._row_to_item(row) if row else None
+
+    @staticmethod
+    def _row_to_item(row: dict) -> dict:
+        payload = json.loads(row["input_json"])
+        result = json.loads(row["result_json"])
+        return {
+            "id": row["id"],
+            "kind": row["kind"],
+            "created_at": row["created_at"],
+            "start": payload.get("start"),
+            "end": payload.get("end"),
+            "parent_id": payload.get("parent_id"),
+            "hops": result.get("hops"),
+            "fare": result.get("fare"),
+            "path": result.get("path"),
+            "reachable": result.get("reachable"),
+        }
 
     def dashboard(self):
         st = stations_repo.list_all(self._conn)
