@@ -6,6 +6,7 @@ import RoutePlanner from './pages/RoutePlanner.vue'
 import FareRules from './pages/FareRules.vue'
 import NetworkEdges from './pages/NetworkEdges.vue'
 import TripHistory from './pages/TripHistory.vue'
+import TripDetail from './pages/TripDetail.vue'
 import Settings from './pages/Settings.vue'
 
 export default createRouter({
@@ -18,6 +19,7 @@ export default createRouter({
     { path: '/fares', component: FareRules },
     { path: '/network', component: NetworkEdges },
     { path: '/history', component: TripHistory },
+    { path: '/history/:id', component: TripDetail },
     { path: '/settings', component: Settings },
   ],
 })
